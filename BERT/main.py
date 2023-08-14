@@ -15,6 +15,7 @@ stdouthandler = logging.StreamHandler(sys.stdout)
 stdouthandler.setLevel(logging.INFO)
 stdouthandler.setFormatter(formatter)
 logger.addHandler(stdouthandler)
+
 ITERATION = "iter4"
 
 
@@ -149,7 +150,7 @@ def split_dictionary(dictionary, amount_of_splits):
     return split_dictionaries
 
 
-def createTables(cur):
+def create_tables(cur):
     # Create database tables
     sql_arch_email_all_issue = f"""
             create table if not exists {ITERATION}_sim_result_arch_emails_all_issues
@@ -183,7 +184,7 @@ def createTables(cur):
     cur.execute(sql_arch_issue_all_email)
 
 
-def SetupModels(arch_emails, arch_issues, all_emails, all_issues):
+def setup_models(arch_emails, arch_issues, all_emails, all_issues):
     model_name = 'sentence-transformers/all-MiniLM-L6-v2'
     logger.info(f"loading model {model_name}")
     model = SentenceTransformer(model_name, device='cuda')
@@ -222,9 +223,9 @@ def __main__():
         all_emails = get_all_emails(cur)
         arch_emails = get_arch_emails(cur)
         arch_issues = get_arch_jiras(cur)
-        createTables(cur)
+        create_tables(cur)
 
-    SetupModels(arch_emails, arch_issues, all_emails, all_issues)
+    setup_models(arch_emails, arch_issues, all_emails, all_issues)
 
     # Load models
     arch_emails_dict = load_email_or_issue_embedding('models/arch-emails-embeddings')

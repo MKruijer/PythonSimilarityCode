@@ -20,6 +20,7 @@ logger.addHandler(stdouthandler)
 
 THREAD_COUNT = 8
 
+
 def get_doc_occ(issues, emails):
     logger.info(f"Starting doc_occ calculation")
     doc_dict = dict()
@@ -152,10 +153,10 @@ def __main__():
         except Exception as e:
             logger.error(f"Error occurred during insert: {str(e)}")
 
-        # cur.execute(sqlArchEmailsAllIssues)
+        cur.execute(sqlArchEmailsAllIssues)
 
-        # cur.execute("SELECT key, description_summary_vector FROM DATA_JIRA_jira_issue;")
-        # issues = cur.fetchall()
+        cur.execute("SELECT key, description_summary_vector FROM DATA_JIRA_jira_issue;")
+        issues = cur.fetchall()
 
         cur.execute("SELECT id, body_vector FROM DATA_EMAIL_email;")
         emails = cur.fetchall()
@@ -163,21 +164,21 @@ def __main__():
         cur.execute("SELECT key, description_summary_vector FROM DATA_JIRA_jira_issue ji WHERE ji.is_design;")
         arch_issues = cur.fetchall()
 
-        # cur.execute("select e.id, e.body_vector from DATA_EMAIL_email e where e.id in ( select et.email_id from DATA_EMAIL_email_tag et left join DATA_EMAIL_tag t on et.tag_id = t.id where t.architectural );")
-        # arch_emails = cur.fetchall()
+        cur.execute("select e.id, e.body_vector from DATA_EMAIL_email e where e.id in ( select et.email_id from DATA_EMAIL_email_tag et left join DATA_EMAIL_tag t on et.tag_id = t.id where t.architectural );")
+        arch_emails = cur.fetchall()
         random.shuffle(arch_issues)  # give all threads equal work
-        # random.shuffle(issues)
+        random.shuffle(issues)
 
     doc_occ_arch_issues_emails = get_doc_occ(arch_issues, emails)
-    # doc_occ_issues_arch_emails = get_doc_occ(issues, arch_emails)
+    doc_occ_issues_arch_emails = get_doc_occ(issues, arch_emails)
 
-    processes = [Process(target=loop, args=(arch_issues[int(len(arch_issues) * (t / THREAD_COUNT)):int(len(arch_issues) * ((t + 1) / THREAD_COUNT))], doc_occ_arch_issues_emails, emails, "iter4_result_arch_issues_all_emails")) for t in range(THREAD_COUNT)]
+    processes = [Process(target=loop, args=(arch_issues[int(len(arch_issues) * (t / THREAD_COUNT)):int(len(arch_issues) * ((t + 1) / THREAD_COUNT))], doc_occ_arch_issues_emails, emails, "result_arch_issues_all_emails")) for t in range(THREAD_COUNT)]
     [p.start() for p in processes]
     [p.join() for p in processes]
-    #
-    # processes = [Process(target=loop, args=(issues[int(len(issues) * (t / THREAD_COUNT)):int(len(issues) * ((t + 1) / THREAD_COUNT))], doc_occ_issues_arch_emails, arch_emails, "SIM_RESULT_arch_emails_all_issues")) for t in range(THREAD_COUNT)]
-    # [p.start() for p in processes]
-    # [p.join() for p in processes]
+
+    processes = [Process(target=loop, args=(issues[int(len(issues) * (t / THREAD_COUNT)):int(len(issues) * ((t + 1) / THREAD_COUNT))], doc_occ_issues_arch_emails, arch_emails, "result_arch_emails_all_issues")) for t in range(THREAD_COUNT)]
+    [p.start() for p in processes]
+    [p.join() for p in processes]
 
 
 if __name__ == "__main__":
