@@ -149,58 +149,41 @@ def split_dictionary(dictionary, amount_of_splits):
     return split_dictionaries
 
 
-def __main__():
-    # Get the total number of logical CPUs
-    cpu_count = psutil.cpu_count(logical=True)
-    desired_cpu_limit = 0.8  # 80% CPU usage limit
-    thread_limit = int(cpu_count * desired_cpu_limit)
+def createTables(cur):
+    # Create database tables
+    sql_arch_email_all_issue = f"""
+            create table if not exists {ITERATION}_sim_result_arch_emails_all_issues
+            (
+                email_id integer not null
+                    constraint "{ITERATION}_SIM_RESULT_arch_emails_all_issues_email_id_fkey"
+                        references data_email_email,
+                issue_key text not null
+                    constraint "{ITERATION}_SIM_RESULT_arch_emails_all_issues_issue_key_fkey"
+                        references data_jira_jira_issue,
+                similarity numeric,
+                constraint "{ITERATION}_SIM_RESULT_arch_emails_all_issues_pkey"
+                    primary key (issue_key, email_id)
+            );
+            """
+    sql_arch_issue_all_email = f"""
+                    create table if not exists {ITERATION}_sim_result_arch_issues_all_emails
+                    (
+                        email_id integer not null
+                            constraint "{ITERATION}_SIM_RESULT_arch_issues_all_emails_email_id_fkey"
+                                references data_email_email,
+                        issue_key text not null
+                            constraint "{ITERATION}_SIM_RESULT_arch_issues_all_emails_issue_key_fkey"
+                                references data_jira_jira_issue,
+                        similarity numeric,
+                        constraint "{ITERATION}_SIM_RESULT_arch_issues_all_emails_pkey"
+                            primary key (issue_key, email_id)
+                    );
+                    """
+    cur.execute(sql_arch_email_all_issue)
+    cur.execute(sql_arch_issue_all_email)
 
-    # Limit the CPU affinity of the current process
-    psutil.Process().cpu_affinity(list(range(thread_limit)))
-    with psycopg.connect(
-            host="localhost",
-            dbname="relationsDB",
-            user="postgres",
-            password="UnsavePassword",
-            port=5432) as connection:
-        cur = connection.cursor(row_factory=psycopg.rows.dict_row)
-        all_issues = get_all_jiras(cur)
-        all_emails = get_all_emails(cur)
-        arch_emails = get_arch_emails(cur)
-        arch_issues = get_arch_jiras(cur)
 
-        # Create database tables
-        sql_arch_email_all_issue = f"""
-        create table if not exists {ITERATION}_sim_result_arch_emails_all_issues
-        (
-            email_id integer not null
-                constraint "{ITERATION}_SIM_RESULT_arch_emails_all_issues_email_id_fkey"
-                    references data_email_email,
-            issue_key text not null
-                constraint "{ITERATION}_SIM_RESULT_arch_emails_all_issues_issue_key_fkey"
-                    references data_jira_jira_issue,
-            similarity numeric,
-            constraint "{ITERATION}_SIM_RESULT_arch_emails_all_issues_pkey"
-                primary key (issue_key, email_id)
-        );
-        """
-        sql_arch_issue_all_email = f"""
-                create table if not exists {ITERATION}_sim_result_arch_issues_all_emails
-                (
-                    email_id integer not null
-                        constraint "{ITERATION}_SIM_RESULT_arch_issues_all_emails_email_id_fkey"
-                            references data_email_email,
-                    issue_key text not null
-                        constraint "{ITERATION}_SIM_RESULT_arch_issues_all_emails_issue_key_fkey"
-                            references data_jira_jira_issue,
-                    similarity numeric,
-                    constraint "{ITERATION}_SIM_RESULT_arch_issues_all_emails_pkey"
-                        primary key (issue_key, email_id)
-                );
-                """
-        cur.execute(sql_arch_email_all_issue)
-        cur.execute(sql_arch_issue_all_email)
-
+def SetupModels(arch_emails, arch_issues, all_emails, all_issues):
     model_name = 'sentence-transformers/all-MiniLM-L6-v2'
     logger.info(f"loading model {model_name}")
     model = SentenceTransformer(model_name, device='cuda')
@@ -216,6 +199,32 @@ def __main__():
     logger.info(f"saving all_emails_dictionary")
     save_email_or_issue_embedding(all_issues, 'key', model, 'models/all-issues-embeddings')
     logger.info(f"done saving all dictionaries.")
+
+
+def __main__():
+    # Get the total number of logical CPUs
+    cpu_count = psutil.cpu_count(logical=True)
+    desired_cpu_limit = 0.8  # 80% CPU usage limit
+    thread_limit = int(cpu_count * desired_cpu_limit)
+
+    # Limit the CPU affinity of the current process
+    psutil.Process().cpu_affinity(list(range(thread_limit)))
+
+    # Setup variables
+    with psycopg.connect(
+            host="localhost",
+            dbname="relationsDB",
+            user="postgres",
+            password="UnsavePassword",
+            port=5432) as connection:
+        cur = connection.cursor(row_factory=psycopg.rows.dict_row)
+        all_issues = get_all_jiras(cur)
+        all_emails = get_all_emails(cur)
+        arch_emails = get_arch_emails(cur)
+        arch_issues = get_arch_jiras(cur)
+        createTables(cur)
+
+    SetupModels(arch_emails, arch_issues, all_emails, all_issues)
 
     # Load models
     arch_emails_dict = load_email_or_issue_embedding('models/arch-emails-embeddings')
