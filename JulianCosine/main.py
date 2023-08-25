@@ -120,40 +120,40 @@ def __main__():
         cur = conn.cursor(row_factory=psycopg.rows.dict_row)
         # Create tables
         sqlArchEmailsAllIssues = """
-        create table if not exists iter4_result_arch_emails_all_issues
+        create table if not exists result_arch_emails_all_issues
         (
             email_id integer not null
-                constraint "iter4_result_arch_emails_all_issues_email_id_fkey"
+                constraint "result_arch_emails_all_issues_email_id_fkey"
                     references data_email_email,
             issue_key text not null
-                constraint "iter4_result_arch_emails_all_issues_issue_key_fkey"
+                constraint "result_arch_emails_all_issues_issue_key_fkey"
                     references data_jira_jira_issue,
             similarity numeric,
-            constraint "iter4_result_arch_emails_all_issues_pkey"
+            constraint "result_arch_emails_all_issues_pkey"
                 primary key (issue_key, email_id)
         );
         """
         sqlArchIssuesAllEmails = """
-                create table if not exists iter4_result_arch_issues_all_emails
+                create table if not exists result_arch_issues_all_emails
                 (
                     email_id integer not null
-                        constraint "iter4_result_arch_issues_all_emails_email_id_fkey"
+                        constraint "result_arch_issues_all_emails_email_id_fkey"
                             references data_email_email,
                     issue_key text not null
-                        constraint "iter4_result_arch_issues_all_emails_issue_key_fkey"
+                        constraint "result_arch_issues_all_emails_issue_key_fkey"
                             references data_jira_jira_issue,
                     similarity numeric,
-                    constraint "iter4_result_arch_issues_all_emails_pkey"
+                    constraint "result_arch_issues_all_emails_pkey"
                         primary key (issue_key, email_id)
                 );
                 """
         try:
+            cur.execute(sqlArchEmailsAllIssues)
+            conn.commit()
             cur.execute(sqlArchIssuesAllEmails)
             conn.commit()
         except Exception as e:
-            logger.error(f"Error occurred during insert: {str(e)}")
-
-        cur.execute(sqlArchEmailsAllIssues)
+            logger.error(f"Error occurred during creation: {str(e)}")
 
         cur.execute("SELECT key, description_summary_vector FROM DATA_JIRA_jira_issue;")
         issues = cur.fetchall()
@@ -164,7 +164,7 @@ def __main__():
         cur.execute("SELECT key, description_summary_vector FROM DATA_JIRA_jira_issue ji WHERE ji.is_design;")
         arch_issues = cur.fetchall()
 
-        cur.execute("select e.id, e.body_vector from DATA_EMAIL_email e where e.id in ( select et.email_id from DATA_EMAIL_email_tag et left join DATA_EMAIL_tag t on et.tag_id = t.id where t.architectural );")
+        cur.execute("select id, body_vector from DATA_EMAIL_email where is_existence or is_executive or is_property;")
         arch_emails = cur.fetchall()
         random.shuffle(arch_issues)  # give all threads equal work
         random.shuffle(issues)
